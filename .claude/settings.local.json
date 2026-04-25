@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(python \"C:/Users/khatr/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.5.0/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"language learning education playful engaging gamified duolingo-style\" --design-system -p \"German Tutor\")",
+      "Bash(python \"C:/Users/khatr/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.5.0/src/ui-ux-pro-max/scripts/search.py\" \"language learning education playful engaging gamified duolingo-style\" --design-system -p \"German Tutor\" -f markdown)",
+      "Bash(curl -s \"https://openrouter.ai/api/v1/models\")",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\(0,'utf8'\\);const j=JSON.parse\\(d\\);const free=j.data.filter\\(m=>\\(m.pricing?.prompt==='0'||parseFloat\\(m.pricing?.prompt||'1'\\)===0\\)&&\\(m.pricing?.completion==='0'||parseFloat\\(m.pricing?.completion||'1'\\)===0\\)\\);free.forEach\\(m=>console.log\\(m.id\\)\\);\")",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\(0,'utf8'\\);const j=JSON.parse\\(d\\);const free=j.data.filter\\(m=>\\(m.pricing?.prompt==='0'||parseFloat\\(m.pricing?.prompt||'1'\\)===0\\)&&\\(m.pricing?.completion==='0'||parseFloat\\(m.pricing?.completion||'1'\\)===0\\)\\);console.log\\('TOTAL FREE:',free.length\\);free.forEach\\(m=>console.log\\(m.id\\)\\);\")"
+    ]
+  }
+}
