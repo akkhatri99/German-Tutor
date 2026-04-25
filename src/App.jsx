@@ -11,7 +11,11 @@ import RoleplayPicker from './components/RoleplayPicker.jsx'
 import Progress from './components/Progress.jsx'
 import SessionDetail from './components/SessionDetail.jsx'
 import Auth from './components/Auth.jsx'
-import { getOnboardingStep, getSettings, saveSettings, resetAll, getProfile, getPlan } from './lib/storage.js'
+import Walkthrough from './components/Walkthrough.jsx'
+import {
+  getOnboardingStep, getSettings, saveSettings, resetAll, getProfile, getPlan,
+  hasSeenWalkthrough, markWalkthroughSeen
+} from './lib/storage.js'
 import { isSupabaseConfigured } from './lib/supabase.js'
 import { initAuth, onAuthChange, syncAfterSignIn, signOut } from './lib/sync.js'
 
@@ -21,7 +25,12 @@ function deriveScreen() {
   const step = getOnboardingStep()
   const settings = getSettings()
   const profile = getProfile()
-  if (!settings.apiKey || !profile?.name) return 'setup'
+  // Brand-new user: show the walkthrough first, then Setup. The seen flag
+  // is wiped on owner mismatch (sync.js) so each new account gets the tour
+  // once. Returning users with profile already set never see this.
+  if (!settings.apiKey || !profile?.name) {
+    return hasSeenWalkthrough() ? 'setup' : 'walkthrough'
+  }
   if (step === 'intake') return 'intake'
   if (step === 'test') return 'test'
   return 'home'
@@ -160,6 +169,10 @@ export default function App() {
 
   return (
     <>
+      {screen === 'walkthrough' && (
+        <Walkthrough onDone={() => { markWalkthroughSeen(); setScreen('setup') }} />
+      )}
+
       {screen === 'setup' && <Setup onDone={() => setScreen('intake')} />}
 
       {screen === 'intake' && (

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { getProfile, getProgress, getHomework, getPlan } from '../lib/storage.js'
+import VocabListModal from './VocabListModal.jsx'
 
 function greeting() {
   const h = new Date().getHours()
@@ -13,6 +15,7 @@ export default function Home({ onStart, onOpenSettings, onResetProfile, onOpenPr
   const progress = getProgress()
   const homework = getHomework()
   const plan = getPlan()
+  const [showVocab, setShowVocab] = useState(false)
 
   const vocabCount = progress.vocabLearned.length
   const hasPlan = !!plan?.goalLevel
@@ -88,10 +91,16 @@ export default function Home({ onStart, onOpenSettings, onResetProfile, onOpenPr
           <div className="stat-value xp">{progress.xp}</div>
           <div className="stat-label">⭐ XP</div>
         </div>
-        <div className="stat">
+        <button
+          type="button"
+          className="stat stat-clickable"
+          onClick={() => setShowVocab(true)}
+          aria-label={`See your ${progress.vocabLearned.length} learned words`}
+          title="Tap to see the words you've learned"
+        >
           <div className="stat-value">{progress.vocabLearned.length}</div>
           <div className="stat-label">📖 Words</div>
-        </div>
+        </button>
       </div>
 
       {/* Homework banner */}
@@ -134,6 +143,8 @@ export default function Home({ onStart, onOpenSettings, onResetProfile, onOpenPr
           Reset profile
         </button>
       </div>
+
+      {showVocab && <VocabListModal onClose={() => setShowVocab(false)} />}
     </div>
   )
 }

@@ -93,6 +93,34 @@ const LS = {
   settings: 'gt_settings'
 }
 
+// Tracks which Supabase user the local cache currently belongs to. Without
+// this, signing in with a different account (e.g. switching from email to
+// Google, or two friends sharing one browser) merges the new user's empty
+// server data on top of the previous user's leftover local data — wrong
+// name, wrong keys, wrong streak. We compare on every sign-in and wipe
+// the user-scoped LS keys if the owner changed.
+const OWNER_KEY = 'gt_owned_by'
+
+function getLocalOwner() {
+  try { return localStorage.getItem(OWNER_KEY) } catch { return null }
+}
+function setLocalOwner(uid) {
+  try { localStorage.setItem(OWNER_KEY, uid) } catch {}
+}
+function clearUserScopedLocal() {
+  // Everything that belongs to a single user. Settings included so a fresh
+  // sign-in doesn't inherit the previous account's API keys; the pull will
+  // refill them from the new owner's `settings` row, or onboarding will run.
+  for (const k of Object.values(LS)) {
+    try { localStorage.removeItem(k) } catch {}
+  }
+  // Onboarding step is a UX flag, not data — but stale 'intake' / 'test'
+  // values would route a fresh user past Setup. Reset it too.
+  try { localStorage.removeItem('gt_onboard') } catch {}
+  // Walkthrough flag is per-user UX — each new account should see it once.
+  try { localStorage.removeItem('gt_walkthrough_seen') } catch {}
+}
+
 function readLS(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback } catch { return fallback }
 }
@@ -249,6 +277,18 @@ export async function pullAll() {
   if (!syncEnabled()) return
   const sb = getSupabase(); const uid = currentUser.id
 
+  // Different account than what's cached locally? Wipe the user-scoped
+  // localStorage before merging so we don't carry the previous user's name,
+  // streak, vocab, or API keys into this user's session. Without this, a
+  // fresh Google sign-in would inherit the previous owner's profile and
+  // skip Setup straight to intake. The pull below will refill from the
+  // server's row for this user (or leave things empty for first-time users,
+  // which is what routes them through Setup correctly).
+  const prevOwner = getLocalOwner()
+  if (prevOwner !== uid) {
+    clearUserScopedLocal()
+  }
+
   // Fetch in parallel.
   const [profileRes, progressRes, homeworkRes, planRes, sessionsRes, settingsRes] = await Promise.all([
     sb.from('profiles').select('*').eq('id', uid).maybeSingle(),
@@ -350,6 +390,10 @@ export async function pullAll() {
   for (const s of unsynced) {
     pushSession(s) // fire-and-forget
   }
+
+  // Mark the cache as belonging to this user so the next sign-in can detect
+  // an owner change and wipe stale data before merging.
+  setLocalOwner(uid)
 }
 
 function pickLatestDate(a, b) {

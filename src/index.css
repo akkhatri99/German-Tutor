@@ -200,6 +200,36 @@ input:focus, textarea:focus, select:focus {
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* ---------- Walkthrough (first-run tour) ---------- */
+.walkthrough-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.walkthrough-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all var(--t-fast);
+}
+.walkthrough-dot.done { background: var(--primary-light); }
+.walkthrough-dot.active {
+  background: var(--primary);
+  width: 24px;
+  border-radius: 4px;
+}
+.walkthrough-step-label {
+  font-size: 12px;
+  color: var(--text-soft);
+  text-align: center;
+  font-weight: 600;
+  margin-top: 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* ---------- Session / chat ---------- */
 .app-shell {
   display: flex;
@@ -352,6 +382,82 @@ input:focus, textarea:focus, select:focus {
 }
 .mic-lang-toggle:hover:not(:disabled) { border-color: var(--primary-light); }
 .mic-lang-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+.mic-lang-caret { font-size: 10px; opacity: 0.7; margin-left: 2px; }
+
+/* Mic-mode picker popover. Anchored above the toggle button; backdrop
+   catches outside taps so the popover dismisses without trapping focus. */
+.mic-lang-wrap { position: relative; display: inline-block; }
+.mic-lang-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: transparent;
+}
+.mic-lang-popover {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(320px, calc(100vw - 32px));
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  padding: 12px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: micLangPop 160ms ease-out;
+}
+@keyframes micLangPop {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+.mic-lang-popover-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 4px 4px;
+}
+.mic-lang-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 10px;
+  border-radius: var(--r-sm);
+  border: 2px solid transparent;
+  background: var(--surface-soft, #f8fafc);
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.mic-lang-option:hover:not(:disabled) {
+  border-color: var(--primary-light);
+  background: var(--surface);
+}
+.mic-lang-option.selected {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+.mic-lang-option:disabled { opacity: 0.6; cursor: not-allowed; }
+.mic-lang-option-flag { font-size: 22px; line-height: 1.1; flex-shrink: 0; }
+.mic-lang-option-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.mic-lang-option-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.mic-lang-option-check { color: var(--primary); }
+.mic-lang-option-blurb {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-soft);
+  line-height: 1.4;
+}
 
 .hint {
   color: var(--text-dim);
@@ -461,6 +567,84 @@ input:focus, textarea:focus, select:focus {
 .stat-value.streak { color: var(--streak); }
 .stat-value.xp { color: var(--accent); }
 .stat-label { font-size: 11px; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+/* Stat as a button: same shape as the static .stat tile but reactive on hover/press
+   so the user can tell it's tappable without us breaking the visual rhythm. */
+.stat-clickable {
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast);
+  font: inherit;
+  color: inherit;
+}
+.stat-clickable:hover { border-color: var(--primary-light); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.stat-clickable:active { transform: translateY(0); }
+.stat-clickable:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Vocab list modal — opened from the "📖 Words" stat on Home. Sized so it
+   fits a long list comfortably on phone, scrolls inside if it overflows. */
+.vocab-modal {
+  max-height: min(80vh, 720px);
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  gap: 14px;
+  max-width: 520px;
+}
+.vocab-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.vocab-modal-head h2 { margin-bottom: 4px; }
+.vocab-modal-search {
+  width: 100%;
+  border-radius: var(--r-pill);
+  padding: 10px 16px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 500;
+}
+.vocab-modal-search:focus { outline: none; border-color: var(--primary); }
+.vocab-modal-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+  margin: 0 -4px;
+}
+.vocab-modal-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "de strength"
+    "en strength";
+  gap: 2px 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--border-soft);
+  align-items: center;
+}
+.vocab-modal-de {
+  grid-area: de;
+  font-weight: 700;
+  color: var(--text);
+  font-size: 15px;
+}
+.vocab-modal-en {
+  grid-area: en;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 500;
+}
+.vocab-modal-strength {
+  grid-area: strength;
+  font-family: monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--accent);
+}
 
 .mode-section-title {
   font-family: 'Baloo 2', sans-serif;

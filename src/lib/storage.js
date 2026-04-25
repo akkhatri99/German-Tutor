@@ -263,9 +263,22 @@ export function updateVocabStrength(deWord, correct) {
 export function getOnboardingStep() { return read(KEYS.onboardingStep, 'setup') }
 export function setOnboardingStep(step) { write(KEYS.onboardingStep, step) }
 
+// First-run walkthrough flag. Stored separately from onboardingStep so it
+// persists even if the user resets profile mid-flow. Cleared by the
+// owner-mismatch wipe in sync.js when a different account signs into the
+// same browser, so each new user sees the tour once.
+const WALKTHROUGH_KEY = 'gt_walkthrough_seen'
+export function hasSeenWalkthrough() {
+  try { return localStorage.getItem(WALKTHROUGH_KEY) === '1' } catch { return false }
+}
+export function markWalkthroughSeen() {
+  try { localStorage.setItem(WALKTHROUGH_KEY, '1') } catch {}
+}
+
 // ---------- Reset (for debugging / user request) ----------
 export function resetAll() {
   Object.values(KEYS).forEach(k => localStorage.removeItem(k))
+  try { localStorage.removeItem(WALKTHROUGH_KEY) } catch {}
 }
 
 // ---------- Export / Import (backup) ----------

@@ -112,6 +112,26 @@ const MIC_MODE_LABEL = {
   'en-US': '🇬🇧 English',
   'de-DE': '🇩🇪 Deutsch'
 }
+// Plain-language description shown in the mic-mode picker popover.
+// Tone is "is this you?" — the user picks the mode that fits how they
+// actually want to talk, not the engineering term ("auto" vs "en-US").
+const MIC_MODE_INFO = {
+  'auto': {
+    title: 'Bilingual',
+    flag: '🌐',
+    blurb: 'You are new to German and speak German and English mixed. Lina will understand your German and English mixed.'
+  },
+  'en-US': {
+    title: 'English',
+    flag: '🇬🇧',
+    blurb: "You don't know German at all and want to learn German by speaking English."
+  },
+  'de-DE': {
+    title: 'Deutsch',
+    flag: '🇩🇪',
+    blurb: 'You know German at a certain level and you are comfortable speaking in German.'
+  }
+}
 
 /**
  * ChatSurface handles the microphone, TTS, and streaming to Gemini.
@@ -143,6 +163,7 @@ export default function ChatSurface({
     if (saved === 'auto' && !bilingualAvailable) return 'en-US'
     return saved
   })
+  const [showMicPicker, setShowMicPicker] = useState(false)
   const [localError, setLocalError] = useState('')
 
   const chatRef = useRef(null)
@@ -300,12 +321,10 @@ export default function ChatSurface({
     isRecording ? stopRecording() : startRecording()
   }
 
-  function cycleMicMode() {
-    const available = bilingualAvailable ? MIC_MODES : MIC_MODES.filter(m => m !== 'auto')
-    const idx = available.indexOf(micMode)
-    const next = available[(idx + 1) % available.length]
-    setMicMode(next)
-    saveSettings({ micLang: next })
+  function pickMicMode(mode) {
+    setMicMode(mode)
+    saveSettings({ micLang: mode })
+    setShowMicPicker(false)
   }
 
   // ---------------- MIC path A: Bilingual (Gemini audio) ----------------
@@ -465,15 +484,58 @@ export default function ChatSurface({
               >
                 {isTranscribing ? '…' : isRecording ? '■' : '🎙'}
               </button>
-              <button
-                className="mic-lang-toggle"
-                onClick={cycleMicMode}
-                disabled={isRecording || isTranscribing}
-                aria-label="Switch mic language mode"
-                title="Bilingual uses Gemini to transcribe mixed English + German. English/Deutsch use the browser's faster speech recognition."
-              >
-                {MIC_MODE_LABEL[micMode]}
-              </button>
+              <div className="mic-lang-wrap">
+                <button
+                  className="mic-lang-toggle"
+                  onClick={() => setShowMicPicker(s => !s)}
+                  disabled={isRecording || isTranscribing}
+                  aria-haspopup="dialog"
+                  aria-expanded={showMicPicker}
+                  aria-label="Switch mic language mode"
+                  title="Click to choose how you want to speak"
+                >
+                  {MIC_MODE_LABEL[micMode]} <span className="mic-lang-caret">▾</span>
+                </button>
+                {showMicPicker && (
+                  <>
+                    <div
+                      className="mic-lang-backdrop"
+                      onClick={() => setShowMicPicker(false)}
+                      aria-hidden="true"
+                    />
+                    <div className="mic-lang-popover" role="dialog" aria-label="Choose how you want to speak">
+                      <div className="mic-lang-popover-title">How do you want to speak?</div>
+                      {MIC_MODES.map(m => {
+                        const info = MIC_MODE_INFO[m]
+                        const unavailable = m === 'auto' && !bilingualAvailable
+                        const selected = m === micMode
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            className={`mic-lang-option ${selected ? 'selected' : ''}`}
+                            onClick={() => !unavailable && pickMicMode(m)}
+                            disabled={unavailable}
+                          >
+                            <span className="mic-lang-option-flag">{info.flag}</span>
+                            <span className="mic-lang-option-body">
+                              <span className="mic-lang-option-title">
+                                {info.title}
+                                {selected && <span className="mic-lang-option-check"> ✓</span>}
+                              </span>
+                              <span className="mic-lang-option-blurb">
+                                {unavailable
+                                  ? 'Add a Gemini voice key in Settings to enable mixed English + German.'
+                                  : info.blurb}
+                              </span>
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             <div className="hint">
               {isRecording
