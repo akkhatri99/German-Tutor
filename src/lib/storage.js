@@ -1,4 +1,14 @@
-// Central localStorage data layer. Kept simple; can be swapped for Supabase later.
+// Central localStorage data layer.
+//
+// localStorage is the runtime source of truth — the UI reads from it
+// synchronously, so the app keeps working offline and on first paint.
+// Writes additionally fire fire-and-forget push helpers from sync.js so
+// signed-in users get cross-device persistence. Push failures are silent
+// (logged in sync.js) and never affect UI behaviour.
+
+import {
+  pushProfile, pushProgress, pushHomework, pushPlan, pushSession, pushSettings
+} from './sync.js'
 
 const KEYS = {
   settings: 'gt_settings',       // { apiKey, model, micLang }
@@ -36,6 +46,7 @@ export function getSettings() {
 export function saveSettings(patch) {
   const s = { ...getSettings(), ...patch }
   write(KEYS.settings, s)
+  pushSettings()
   return s
 }
 
@@ -47,6 +58,7 @@ export function saveProfile(patch) {
   const p = { ...(getProfile() || {}), ...patch }
   if (!p.createdAt) p.createdAt = new Date().toISOString()
   write(KEYS.profile, p)
+  pushProfile()
   return p
 }
 
@@ -64,6 +76,7 @@ export function getProgress() { return read(KEYS.progress, EMPTY_PROGRESS) }
 export function saveProgress(patch) {
   const p = { ...getProgress(), ...patch }
   write(KEYS.progress, p)
+  pushProgress()
   return p
 }
 
@@ -82,6 +95,7 @@ export function addVocab(items) {
   }
   p.vocabLearned = Array.from(existing.values())
   write(KEYS.progress, p)
+  if (added > 0) pushProgress()
   return added
 }
 
@@ -97,6 +111,7 @@ export function addGrammar(topics) {
     }
   }
   write(KEYS.progress, p)
+  pushProgress()
   return p.grammarCovered
 }
 
@@ -185,6 +200,7 @@ export function saveSession(session) {
   // Keep last 50 sessions only to avoid bloating storage
   const trimmed = all.slice(-50)
   write(KEYS.sessions, trimmed)
+  pushSession(session)
   return session
 }
 export function getLastSession() {
@@ -200,6 +216,7 @@ export function setPendingHomework(prompt) {
   const hw = getHomework()
   hw.pending = prompt
   write(KEYS.homework, hw)
+  pushHomework()
 }
 export function completeHomework() {
   const hw = getHomework()
@@ -207,6 +224,7 @@ export function completeHomework() {
     hw.history.push({ prompt: hw.pending, completed: new Date().toISOString() })
     hw.pending = null
     write(KEYS.homework, hw)
+    pushHomework()
   }
 }
 
@@ -217,6 +235,7 @@ export function savePlan(patch) {
   if (!p.startedAt) p.startedAt = new Date().toISOString()
   if (p.sessionsCompleted == null) p.sessionsCompleted = 0
   write(KEYS.plan, p)
+  pushPlan()
   return p
 }
 export function bumpPlanSession() {
@@ -237,6 +256,7 @@ export function updateVocabStrength(deWord, correct) {
     : Math.max(Math.floor((cur.strength || 1) / 2), 1)
   p.vocabLearned[idx] = { ...cur, strength: newStrength, lastReviewed: new Date().toISOString() }
   write(KEYS.progress, p)
+  pushProgress()
 }
 
 // ---------- Onboarding ----------

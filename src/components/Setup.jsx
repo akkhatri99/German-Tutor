@@ -1,12 +1,18 @@
 import { useState } from 'react'
 import { validateKey, PROVIDERS, DEFAULT_PROVIDER } from '../lib/ai.js'
-import { saveSettings, saveProfile, setOnboardingStep } from '../lib/storage.js'
+import { saveSettings, saveProfile, setOnboardingStep, getProfile } from '../lib/storage.js'
+import { flagOf } from '../lib/countries.js'
+import CountryPicker from './CountryPicker.jsx'
 import KeyWalkthrough from './KeyWalkthrough.jsx'
 
-// Three-step onboarding: welcome → name → provider + API key
+// Four-step onboarding: welcome → name → country → provider + API key.
+// Country is optional (used only for the future leaderboard) but we ask now
+// so we don't have to nag later.
 export default function Setup({ onDone }) {
+  const initialProfile = getProfile() || {}
   const [step, setStep] = useState(0)
-  const [name, setName] = useState('')
+  const [name, setName] = useState(initialProfile.name || '')
+  const [country, setCountry] = useState(initialProfile.country || '')
   const [provider, setProvider] = useState(DEFAULT_PROVIDER)
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState(PROVIDERS[DEFAULT_PROVIDER].defaultModel)
@@ -37,7 +43,10 @@ export default function Setup({ onDone }) {
         }
       }
       saveSettings({ provider, apiKey: apiKey.trim(), model, voiceKey: voiceKey.trim() })
-      saveProfile({ name: name.trim() || 'Friend' })
+      saveProfile({
+        name: name.trim() || 'Friend',
+        country: country || null
+      })
       setOnboardingStep('intake')
       onDone()
     } catch (e) {
@@ -91,7 +100,26 @@ export default function Setup({ onDone }) {
     )
   }
 
-  // step 2 — provider + API key
+  if (step === 2) {
+    return (
+      <div className="scene">
+        <div className="scene-logo">{country ? flagOf(country) : '🌍'}</div>
+        <h1 className="scene-title">Where are you from?</h1>
+        <p className="scene-subtitle">
+          Optional — we'll show this on the leaderboard once it's live. Skip if you'd rather not say.
+        </p>
+        <CountryPicker value={country} onChange={setCountry} autoFocus />
+        <div className="row-wrap" style={{ width: '100%', justifyContent: 'space-between' }}>
+          <button className="btn btn-ghost" onClick={() => setStep(1)}>Back</button>
+          <button className="btn btn-primary" onClick={() => setStep(3)}>
+            Continue →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // step 3 — provider + API key
   const pInfo = PROVIDERS[provider]
   return (
     <div className="scene">
@@ -184,7 +212,7 @@ export default function Setup({ onDone }) {
       </div>
 
       <div className="row-wrap" style={{ width: '100%', justifyContent: 'space-between' }}>
-        <button className="btn btn-ghost" onClick={() => setStep(1)} disabled={checking}>Back</button>
+        <button className="btn btn-ghost" onClick={() => setStep(2)} disabled={checking}>Back</button>
         <button
           className="btn btn-primary"
           onClick={handleFinish}

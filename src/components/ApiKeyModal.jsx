@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { validateKey, PROVIDERS, DEFAULT_PROVIDER } from '../lib/ai.js'
+import { isSupabaseConfigured } from '../lib/supabase.js'
 import KeyWalkthrough from './KeyWalkthrough.jsx'
 
-export default function ApiKeyModal({ onSave, existingProvider, existingKey, existingModel, existingVoiceKey, onClose }) {
+export default function ApiKeyModal({ onSave, existingProvider, existingKey, existingModel, existingVoiceKey, user, onSignOut, onClose }) {
   // Migrate unknown / legacy provider ids (e.g. 'openrouter') back to default.
   const safeProvider = PROVIDERS[existingProvider] ? existingProvider : DEFAULT_PROVIDER
   const [provider, setProvider] = useState(safeProvider)
@@ -59,6 +60,41 @@ export default function ApiKeyModal({ onSave, existingProvider, existingKey, exi
         <p style={{ fontSize: 14 }}>
           Your key stays in your browser only. Hitting quota on one provider? Switch to another — your progress stays put.
         </p>
+
+        {isSupabaseConfigured() && (
+          <div
+            style={{
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: '10px 12px',
+              marginBottom: 16,
+              background: 'var(--surface-soft, #f7f7fb)'
+            }}
+          >
+            <div style={{ fontSize: 12, color: 'var(--text-soft)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+              Account
+            </div>
+            {user ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  ✓ Signed in as <span style={{ color: 'var(--primary)' }}>{user.email}</span>
+                </div>
+                <button
+                  className="btn btn-ghost"
+                  onClick={onSignOut}
+                  disabled={checking}
+                  style={{ flexShrink: 0, padding: '4px 10px', fontSize: 13 }}
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: 'var(--text-soft)' }}>
+                Not signed in — progress lives only on this device. Reset and use the email link in setup to sync across devices.
+              </div>
+            )}
+          </div>
+        )}
 
         <label className="form-label">Provider</label>
         <div className="level-grid" style={{ maxWidth: '100%', gridTemplateColumns: '1fr 1fr', marginBottom: 14 }}>
