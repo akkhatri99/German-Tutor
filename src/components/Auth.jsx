@@ -116,8 +116,8 @@ export default function Auth() {
           onClick={() => handleOAuth('apple')}
           disabled={busy}
         >
-          <AppleIcon />
-          <span>Continue with Apple</span>
+          {/* <AppleIcon />
+          <span>Continue with Apple</span> */}
         </button>
       </div>
 
