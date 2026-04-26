@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ChatSurface from './ChatSurface.jsx'
 import {
   freeChatPrompt, summaryPrompt, zeroToHeroPrompt,
@@ -33,6 +33,10 @@ export default function Session({ context, onExit }) {
   const [ending, setEnding] = useState(false)
   const [endView, setEndView] = useState(null)
   const startedAt = useRef(new Date().toISOString())
+  // Tracks whether endSession already credited XP/streak/vocab for this
+  // run, so an unmount-time autosave (or a follow-up button press) can't
+  // double-credit progress.
+  const creditedRef = useRef(false)
 
   const meta = MODE_META[mode] || MODE_META.free
 
@@ -68,9 +72,67 @@ export default function Session({ context, onExit }) {
       break
   }
 
-  async function endSession() {
-    if (ending) return
+  // Auto-save the raw transcript on every assistant turn. Doesn't credit
+  // XP / streak / vocab — that's reserved for endSession (manual ✓ or
+  // tab-close handler) so the user only gets paid once per session. But
+  // it DOES make sure the conversation itself can never be lost just
+  // because someone forgot the ✓ button. Sessions saved this way show up
+  // in Progress with `endedAt: null` (a hint we treat as "in progress").
+  useEffect(() => {
+    if (creditedRef.current) return // already finalized — leave it alone
+    if (messages.length < 2) return
+    const last = messages[messages.length - 1]
+    // Only save once a turn is complete (assistant has actually replied).
+    if (last.role !== 'assistant' || !last.text) return
+
+    saveSession({
+      id: startedAt.current,
+      mode,
+      topic: topic?.id,
+      scenario: scenario?.id,
+      startedAt: startedAt.current,
+      endedAt: null,
+      messages,
+      summary: null
+    })
+  }, [messages, mode, topic, scenario])
+
+  // Last-ditch flush before tab close / refresh / app switch on mobile.
+  // Synchronous localStorage write only — no AI summary call (the API
+  // request would get cancelled mid-unload anyway).
+  useEffect(() => {
+    function flush() {
+      if (creditedRef.current || messages.length < 2) return
+      saveSession({
+        id: startedAt.current,
+        mode,
+        topic: topic?.id,
+        scenario: scenario?.id,
+        startedAt: startedAt.current,
+        endedAt: null,
+        messages,
+        summary: null
+      })
+    }
+    window.addEventListener('beforeunload', flush)
+    // pagehide fires on iOS Safari where beforeunload is unreliable.
+    window.addEventListener('pagehide', flush)
+    return () => {
+      window.removeEventListener('beforeunload', flush)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [messages, mode, topic, scenario])
+
+  async function endSession({ showRecap = true } = {}) {
+    if (ending || creditedRef.current) return
+    // If there's nothing to save, don't burn an API call on the summary —
+    // just let the caller route the user out.
+    if (messages.length < 2) {
+      if (!showRecap) onExit()
+      return
+    }
     setEnding(true)
+    creditedRef.current = true
 
     try {
       const transcript = messages
@@ -118,13 +180,19 @@ export default function Session({ context, onExit }) {
 
       const levelUp = maybePromoteLevel()
 
-      setEndView({
-        vocabCount: addedVocab,
-        topics: summary.topics || [],
-        homework: summary.homework,
-        xp: xpEarned,
-        levelUp
-      })
+      if (showRecap) {
+        setEndView({
+          vocabCount: addedVocab,
+          topics: summary.topics || [],
+          homework: summary.homework,
+          xp: xpEarned,
+          levelUp
+        })
+      } else {
+        // Quiet save (× button or external nav) — credit applied, no
+        // celebration screen, just take the user home.
+        onExit()
+      }
     } finally {
       setEnding(false)
     }
@@ -211,13 +279,16 @@ export default function Session({ context, onExit }) {
     )
   }
 
-  const subtitle = mode === 'grammar' && topic
+  const baseSubtitle = mode === 'grammar' && topic
     ? topic.title
     : mode === 'roleplay' && scenario
       ? scenario.title
       : mode === 'zero-hero'
         ? `→ ${plan?.goalLevel || 'B1'}  ·  ${plan?.dailyMinutes || 15} min/day`
         : `Level ${profile?.level || 'A1'}`
+  // Once a real exchange has happened, surface the autosave reassurance
+  // right in the topbar so users stop worrying about losing progress.
+  const subtitle = messages.length >= 2 ? `${baseSubtitle}  ·  💾 Saved` : baseSubtitle
 
   return (
     <div className="app-shell">
@@ -229,13 +300,18 @@ export default function Session({ context, onExit }) {
         <div className="row" style={{ gap: 6 }}>
           <button
             className="btn-icon"
-            title="End session"
-            onClick={endSession}
+            title="Done — show my recap"
+            onClick={() => endSession({ showRecap: true })}
             disabled={ending || messages.length < 2}
           >
             {ending ? '…' : '✓'}
           </button>
-          <button className="btn-icon" title="Exit without saving" onClick={onExit}>×</button>
+          <button
+            className="btn-icon"
+            title="Exit (progress saves automatically)"
+            onClick={() => endSession({ showRecap: false })}
+            disabled={ending}
+          >×</button>
         </div>
       </div>
 

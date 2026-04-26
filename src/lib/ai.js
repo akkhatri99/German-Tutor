@@ -79,7 +79,9 @@ export async function transcribeAudio({ provider, apiKey, voiceKey, audioBlob, s
   }
   return gemini.transcribeAudio({
     apiKey: useKey,
-    model: gemini.DEFAULT_MODEL,
+    // Use the more generous free-tier model for voice — flash-lite handles
+    // transcription just as well and lets users get further before quota.
+    model: gemini.TRANSCRIBE_MODEL,
     audioBlob,
     signal
   })

@@ -194,9 +194,17 @@ export function addXp(amount) {
 
 // ---------- Sessions ----------
 export function getSessions() { return read(KEYS.sessions, []) }
+// Insert OR replace by `id`. Auto-save during a live session calls this on
+// every turn so the in-progress transcript survives a tab close — without
+// piling up a duplicate row each time. The original `saveSession` shape
+// (push only) was the cause of users losing whole conversations: if they
+// forgot to hit ✓, nothing was ever written. Now the latest snapshot is
+// always one upsert away.
 export function saveSession(session) {
   const all = getSessions()
-  all.push(session)
+  const idx = session?.id ? all.findIndex(s => s.id === session.id) : -1
+  if (idx >= 0) all[idx] = session
+  else all.push(session)
   // Keep last 50 sessions only to avoid bloating storage
   const trimmed = all.slice(-50)
   write(KEYS.sessions, trimmed)
@@ -205,7 +213,13 @@ export function saveSession(session) {
 }
 export function getLastSession() {
   const all = getSessions()
-  return all[all.length - 1] || null
+  // Return the most recent COMPLETED session — in-progress ones (no
+  // endedAt) shouldn't seed revision hints because the AI summary hasn't
+  // been generated yet for them.
+  for (let i = all.length - 1; i >= 0; i--) {
+    if (all[i]?.endedAt) return all[i]
+  }
+  return null
 }
 
 // ---------- Homework ----------

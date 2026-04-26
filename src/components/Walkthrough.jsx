@@ -44,6 +44,11 @@ const STEPS = [
     body: "Don't know a word in my reply? Just tap it — you'll get the meaning, pronunciation, and an example sentence right there. No leaving the chat."
   },
   {
+    icon: '💾',
+    title: 'No need to save',
+    body: 'Your progress saves automatically — every reply is stored as we go. Hit ✓ at the end if you want a recap with XP and new words, or just close the tab. Either way, nothing gets lost.'
+  },
+  {
     icon: '✨',
     title: "Let's set you up",
     body: "That's it! Next up: pick your provider, paste your keys, tell me your name. Two minutes tops."

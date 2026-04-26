@@ -368,7 +368,20 @@ export default function ChatSurface({
       if (text) handleUserMessage(text)
       else setLocalError("I couldn't hear anything. Try again?")
     } catch (e) {
-      setLocalError('Transcription failed: ' + (e.message || 'unknown'))
+      // Gemini free tier has a tight per-minute quota; bilingual goes
+      // through Gemini, so it's the first thing to break under any real
+      // use. When that happens, auto-flip the mic to English web-speech
+      // (no quota, runs in the browser) and surface the helpful message
+      // from the gemini.js classifier instead of the raw API wall-of-text.
+      if (e.code === 'QUOTA_EXCEEDED' && webSpeechSupported) {
+        pickMicMode('en-US')
+        setLocalError(
+          (e.message || 'Voice quota hit.') +
+          ' I switched the mic to 🇬🇧 English so you can keep going.'
+        )
+      } else {
+        setLocalError(e.message || 'Transcription failed. Try again?')
+      }
     } finally {
       setIsTranscribing(false)
     }

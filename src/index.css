@@ -786,6 +786,11 @@ input:focus, textarea:focus, select:focus {
   font-size: 14px;
   font-weight: 600;
   border: 1px solid rgba(220, 38, 38, 0.2);
+  /* Multi-line error messages (e.g. quota guidance with bullet points)
+     should preserve newlines so the recommendations render as a list
+     instead of one wall of text. */
+  white-space: pre-line;
+  line-height: 1.5;
 }
 
 /* ---------- Progress screen ---------- */
